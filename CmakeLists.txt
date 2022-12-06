@@ -6,9 +6,9 @@ set(CMAKE_CXX_STANDARD 14)
 # Add MPI Package to Project
 find_package(MPI REQUIRED)
 
-add_executable(single singleread.cpp cmdline.h utils.h)
+add_executable(meshconvert singleread.cpp cmdline.h utils.h)
 
 # Add libraries for code completion and compiling
-target_link_libraries(single PUBLIC MPI::MPI_CXX)
+target_link_libraries(meshconvert PUBLIC MPI::MPI_CXX)
 
 
