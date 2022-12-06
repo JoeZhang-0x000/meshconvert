@@ -30,7 +30,7 @@ int NDIM = 3; //default nodes dimension
 int NID = 1; // global node id
 int EID = 1; // global element id
 
-int WID = 20; //default span, used in setw(WID)
+int WID = 10; //default span, used in setw(WID)
 
 bool ISPRINT = true; // if true, print something,
 
@@ -432,6 +432,7 @@ int main(int argc,char** argv){
   a.add<string>("source",'s',"source type",false,"abaqus",cmdline::oneof<string>("abaqus","mfem"));
   a.add<string>("dest",'d',"destination type", false,"mfem",cmdline::oneof<string>("abauqs","mfem"));
   a.add<bool>("print",'p',"print details",false,true);
+  a.add<int>("width",'w',"write span wdith",false,10,cmdline::range(1,9999));
   a.parse_check(argc,argv);
   MPI_Init(0,0);
 
@@ -439,6 +440,7 @@ int main(int argc,char** argv){
   string outputFileName = a.get<string>("output").c_str();
   string sourceType = a.get<string>("source");
   string destType = a.get<string>("dest");
+  WID = a.get<int>("width");
 
   cout<<"**********************************"<<endl;
   ctable("input");cout<<inputFileName<<endl;
@@ -464,14 +466,14 @@ int main(int argc,char** argv){
     // read part
   start = MPI_Wtime();
 
-  if(sourceType.compare("abaqus")){
+  if(!sourceType.compare("abaqus")){
       readAbaqus(fin,nodeList,elementList);
   }
-  else if(sourceType.compare("mefem")){
+  else if(!sourceType.compare("mfem")){
       readMfem(fin,nodeList,elementList,boundaryList);
   }
   else{
-      cerr<<left<<setw(20)<<"no such type "<<sourceType<<endl;
+      cerr<<left<<setw(20)<<"no such source type "<<sourceType<<endl;
   }
 
   end = MPI_Wtime();
@@ -480,14 +482,14 @@ int main(int argc,char** argv){
   // write part
   start = MPI_Wtime();
 
-    if(sourceType.compare("oofem")){
+    if(!destType.compare("oofem")){
         writeOofem(fout,nodeList,elementList);
     }
-    else if(!sourceType.compare("mfem")){
+    else if(!destType.compare("mfem")){
         writeMfem(fout,nodeList,elementList,boundaryList);
     }
     else{
-        cerr<<left<<setw(20)<<"no such type "<<destType<<endl;
+        cerr<<left<<setw(20)<<"no such destination type "<<destType<<endl;
     }
 
 
