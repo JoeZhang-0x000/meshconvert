@@ -1,3 +1,6 @@
+## 简介
+本项目实现Abaqus input file .inp文件与oofem,mfem等常见类型网格文件互相转换
+
 ## 安装
 下载源码，使用cmake编译
 
