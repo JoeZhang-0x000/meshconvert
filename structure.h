@@ -13,16 +13,28 @@
 #include "fstream"
 #include<cstring>
 #include"utils.h"
+#include<mpi.h>
+
 using namespace std;
 
 int DIM = 3; //default dimension
+
 int NDIM = 3; //default nodes dimension
+
 int NID = 1; // global node id
+
 int EID = 1; // global element id
 
 int WID = 10; //default span, used in setw(WID)
 
-bool ISPRINT = true; // if true, print something,
+bool ISPRINT = false; // if true, print something,
+
+int RANK = 0; // 默认当前进程编号
+
+int SIZE = 1; // 默认进程数
+
+
+MPI_Status status;
 
 // # geometry      id   vertices
 // # POINT       = 0    1
