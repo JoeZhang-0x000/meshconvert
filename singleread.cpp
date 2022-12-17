@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
     a.add<string>("input", 'i', "input file name", true);
     a.add<string>("output", 'o', "output file name", true);
     a.add<string>("source", 's', "source type", false, "abaqus", cmdline::oneof<string>("abaqus", "mfem"));
-    a.add<string>("dest", 'd', "destination type", false, "mfem", cmdline::oneof<string>("abauqs", "mfem"));
+    a.add<string>("dest", 'd', "destination type", false, "debug", cmdline::oneof<string>("abauqs", "mfem", "debug"));
     a.add<bool>("print", 'p', "print details", false, true);
     a.add<int>("width", 'w', "write span wdith", false, 10, cmdline::range(1, 9999));
     a.parse_check(argc, argv);
@@ -46,9 +46,8 @@ int main(int argc, char **argv) {
     }
 
     ifstream fin;
-    ofstream fout;
+    fstream fout;
     fin.open(inputFileName);
-    fout.open(outputFileName);
 
     // structure to store data
     vector<Node *> nodeList;
@@ -57,23 +56,22 @@ int main(int argc, char **argv) {
 
     double start, end; // used to record the time cost
 
-    memset(rows, 1, sizeof(rows)); // 填充为最大
 
     // read part
     start = MPI_Wtime();
 
     if (!sourceType.compare("abaqus")) {
-        if (SIZE > 1 && RANK != 0 && RANK < sizeof(rows) / sizeof(int)) { // 子进程先等待0号进程发送读取指标，存在se中
-            MPI_Recv(rows, sizeof(rows)/sizeof(int), MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        int end;
+        if (RANK == 0)
+            end = scanAbaqus(fin);
+        MPI_Bcast(&end, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(keys, 2 * sizeof(keys) / sizeof(int), MPI_INT, 0, MPI_COMM_WORLD);
+        int startLine = end / SIZE * RANK;
+        int endLine = startLine + end / SIZE;
+        readAbaqus(fin, nodeList, elementList, startLine, endLine);
+        if (ISPRINT)
+            cout << "rank:" << RANK << " " << "start: " << startLine << " end: " << endLine << endl;
 
-            cout<<"rank "<<RANK<<"\t"<<"startLine: "<<rows[RANK-1]<<"\t"<<"endLine: "<<rows[RANK]<<endl;
-            readAbaqus(fin, nodeList, elementList, rows[RANK-1], rows[RANK]);
-        } else { // 0号进程读取整个文件
-            readAbaqus(fin, nodeList, elementList);
-            for(int i=1;i<SIZE;i++)
-                MPI_Send(rows,sizeof(rows)/sizeof(int),MPI_INT,i,0,MPI_COMM_WORLD);
-//            MPI_Bcast(rows,sizeof(rows)/sizeof(int),MPI_INT,0,MPI_COMM_WORLD);
-        }
     } else if (!sourceType.compare("mfem")) {
         readMfem(fin, nodeList, elementList, boundaryList);
     } else {
@@ -82,13 +80,26 @@ int main(int argc, char **argv) {
 
     end = MPI_Wtime();
     ctable("read cost:");
-    cout<<"rank "<<RANK<<" : " << end - start << "s" << endl;
+    cout << "rank " << RANK << " : " << end - start << "s" << endl;
 
     // write part
     start = MPI_Wtime();
 
-    if (!destType.compare("oofem")) {
-        writeOofem(fout, nodeList, elementList);
+    if (!destType.compare("debug")) {
+        int ok,ok2;
+        MPI_Status status;
+        int left = MPI_PROC_NULL;
+        int right = MPI_PROC_NULL;
+        if (RANK != 0)
+            left = RANK - 1;
+        if (RANK != SIZE - 1)
+            right = RANK + 1;
+        MPI_Recv(&ok,1,MPI_INT,left,0,MPI_COMM_WORLD,&status);
+        fout.open(outputFileName);
+        writeDebug(fout, nodeList, elementList,RANK);
+        fout.close();
+        MPI_Send(&ok,1,MPI_INT,right,0,MPI_COMM_WORLD);
+
     } else if (!destType.compare("mfem")) {
         writeMfem(fout, nodeList, elementList, boundaryList);
     } else {
@@ -98,14 +109,14 @@ int main(int argc, char **argv) {
 
     end = MPI_Wtime();
     ctable("write cost:");
-    cout<<"rank "<<RANK<<" : " << end - start << "s" << endl;
+    cout << "rank " << RANK << " : " << end - start << "s" << endl;
 
     MPI_Barrier(MPI_COMM_WORLD);
 
     fin.close();
-    fout.close();
 
     MPI_Finalize();
-    ctable("rank:");cout<<RANK<<" process over!"<< endl;
+    ctable("rank:");
+    cout << RANK << " process over!" << endl;
     return 0;
 }

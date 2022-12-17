@@ -28,7 +28,7 @@ int find(char *s1, char *s2) {
 
 /*split a string with given delimiter
  */
-tuple<char **, int> split(char *s) {
+pair<char **, int> split(char *s) {
     char *p;
     char **res;
     res = new char *[10];
@@ -40,7 +40,7 @@ tuple<char **, int> split(char *s) {
         res[len++] = p;
         p = strtok(NULL, delim);
     }
-    return tuple<char **, int>{res, len};
+    return {res, len};
 }
 
 #endif //M_UTILS_H

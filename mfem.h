@@ -83,7 +83,7 @@ void readMfem(ifstream &fin, vector<Node *> &nodeList, vector<Element *> &elemen
     }
 }
 
-void writeMfem(ofstream &fout, vector<Node *> &nodeList, vector<Element *> &elementList, vector<Element *> &boundaryList) {
+void writeMfem(fstream &fout, vector<Node *> &nodeList, vector<Element *> &elementList, vector<Element *> &boundaryList) {
     fout << "MFEM mesh v1.x\n";
     fout << endl;
     fout << "dimension\n";

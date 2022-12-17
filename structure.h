@@ -34,7 +34,7 @@ int RANK = 0; // 默认当前进程编号
 int SIZE = 1; // 默认进程数
 
 
-MPI_Status status;
+
 
 // # geometry      id   vertices
 // # POINT       = 0    1
@@ -87,6 +87,7 @@ public:
     string to_write_oofem();
 
     string to_write_mfem();
+
 };
 
 Node::Node(int id, double x, double y, double z) {
@@ -95,7 +96,6 @@ Node::Node(int id, double x, double y, double z) {
     this->y = y;
     this->z = z;
 }
-
 
 string Node::to_write_oofem() {
     stringstream tmp;
