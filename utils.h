@@ -28,18 +28,18 @@ int find(char *s1, char *s2) {
 
 /*split a string with given delimiter
  */
-pair<char **, int> split(char *s) {
+pair<char **, int> split(char *s,string delim = " ,") {
     char *p;
     char **res;
-    res = new char *[10];
-    char delim[] = " ,";
-    p = new char[1024];
-    p = strtok(s, delim);
+    res = new char *[20];
+    p = new char[24];
+    p = strtok(s, delim.c_str());
     int len = 0;
     while (p != NULL) {
         res[len++] = p;
-        p = strtok(NULL, delim);
+        p = strtok(NULL, delim.c_str());
     }
+    delete p;
     return {res, len};
 }
 

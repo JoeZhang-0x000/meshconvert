@@ -48,11 +48,14 @@ int main(int argc, char **argv) {
     ifstream fin;
     fstream fout;
     fin.open(inputFileName);
+    auto op = (RANK == 0) ? ios::out | ios::trunc : ios::out;
+    fout.open(outputFileName, op);
 
     // structure to store data
-    vector<Node *> nodeList;
-    vector<Element *> elementList;
-    vector<Element *> boundaryList;
+    AbaqusData *data;
+//    vector<Node *> nodeList;
+//    vector<Element *> elementList;
+//    vector<Element *> boundaryList;
 
     double start, end; // used to record the time cost
 
@@ -61,19 +64,20 @@ int main(int argc, char **argv) {
     start = MPI_Wtime();
 
     if (!sourceType.compare("abaqus")) {
+        data = new AbaqusData();
         int end;
         if (RANK == 0)
             end = scanAbaqus(fin);
         MPI_Bcast(&end, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        MPI_Bcast(keys, 2 * sizeof(keys) / sizeof(int), MPI_INT, 0, MPI_COMM_WORLD);
-        int startLine = end / SIZE * RANK;
-        int endLine = startLine + end / SIZE;
-        readAbaqus(fin, nodeList, elementList, startLine, endLine);
+        STARTLINE = end / SIZE * RANK;
+        ENDLINE = STARTLINE + end / SIZE;
+        if (RANK == SIZE - 1) ENDLINE = end + 1; // 保证最后一个进程读完剩余的所有行
+        readAbaqus(fin, data, STARTLINE, ENDLINE);
         if (ISPRINT)
-            cout << "rank:" << RANK << " " << "start: " << startLine << " end: " << endLine << endl;
+            cout << "rank:" << RANK << " " << "start: " << STARTLINE << " end: " << ENDLINE << endl;
 
     } else if (!sourceType.compare("mfem")) {
-        readMfem(fin, nodeList, elementList, boundaryList);
+//        readMfem(fin, nodeList, elementList, boundaryList);
     } else {
         cerr << left << setw(20) << "no such source type " << sourceType << endl;
     }
@@ -86,7 +90,7 @@ int main(int argc, char **argv) {
     start = MPI_Wtime();
 
     if (!destType.compare("debug")) {
-        int ok,ok2;
+        int ok;
         MPI_Status status;
         int left = MPI_PROC_NULL;
         int right = MPI_PROC_NULL;
@@ -94,14 +98,14 @@ int main(int argc, char **argv) {
             left = RANK - 1;
         if (RANK != SIZE - 1)
             right = RANK + 1;
-        MPI_Recv(&ok,1,MPI_INT,left,0,MPI_COMM_WORLD,&status);
-        fout.open(outputFileName);
-        writeDebug(fout, nodeList, elementList,RANK);
-        fout.close();
-        MPI_Send(&ok,1,MPI_INT,right,0,MPI_COMM_WORLD);
+        MPI_Recv(&ok, 1, MPI_INT, left, 0, MPI_COMM_WORLD, &status);
+
+        writeDebug(fout, data);
+
+        MPI_Send(&ok, 1, MPI_INT, right, 0, MPI_COMM_WORLD);
 
     } else if (!destType.compare("mfem")) {
-        writeMfem(fout, nodeList, elementList, boundaryList);
+//        writeMfem(fout, nodeList, elementList, boundaryList);
     } else {
         cerr << left << setw(20) << "no such destination type " << destType << endl;
     }
@@ -111,9 +115,8 @@ int main(int argc, char **argv) {
     ctable("write cost:");
     cout << "rank " << RANK << " : " << end - start << "s" << endl;
 
-    MPI_Barrier(MPI_COMM_WORLD);
-
     fin.close();
+    fout.close();
 
     MPI_Finalize();
     ctable("rank:");

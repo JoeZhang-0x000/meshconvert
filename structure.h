@@ -33,6 +33,10 @@ int RANK = 0; // 默认当前进程编号
 
 int SIZE = 1; // 默认进程数
 
+int STARTLINE = 0; // 默认开始读位置
+
+int ENDLINE = INT_MAX; //默认结束读位置
+
 
 
 
@@ -84,7 +88,7 @@ public:
 public:
     Node(int= 0, double= 0.f, double= 0.f, double= 0.f);
 
-    string to_write_oofem();
+    string to_write_debug();
 
     string to_write_mfem();
 
@@ -97,13 +101,13 @@ Node::Node(int id, double x, double y, double z) {
     this->z = z;
 }
 
-string Node::to_write_oofem() {
+string Node::to_write_debug() {
     stringstream tmp;
     if (DIM == 3)
-        tmp << "node" << " " << int(id) << " " << "coords" << " " << "3" << " " << to_string(x) << " " << to_string(y)
+        tmp << int(id)<< " " << to_string(x) << " " << to_string(y)
             << " " << to_string(z) << "\n";
     else
-        tmp << "node" << " " << int(id) << " " << "coords" << " " << "2" << " " << to_string(x) << " " << to_string(y)
+        tmp << int(id) <<" " << to_string(x) << " " << to_string(y)
             << "\n";
     string res = tmp.str();
     return res;
@@ -124,13 +128,14 @@ string Node::to_write_mfem() {
 class Element {
 public:
     int id;
+    string type; //单员类型
     vector<int> v_node; // storage points index
 public:
     Element(int);
 
     void add(int);
 
-    string to_write_oofem();
+    string to_write_debug();
 
     string to_write_mfem();
 };
@@ -143,9 +148,9 @@ void Element::add(int n) {
     this->v_node.push_back(n);
 }
 
-string Element::to_write_oofem() {
+string Element::to_write_debug() {
     stringstream tmp;
-    tmp << "lspace" << " " << int(id) << " " << "nodes" << " " << v_node.size() << " ";
+    tmp << int(id) << " " ;
     for (auto i: v_node) {
         tmp << to_string(i) << " ";
     }
@@ -170,5 +175,59 @@ string Element::to_write_mfem() {
     string res = tmp.str();
     return res;
 }
+
+class Nset{
+public:
+    string name;
+    vector<int> ids; // nodes ids
+public:
+    Nset(string name = "no name"){
+        this->name = name;
+    }
+    string to_write_debug(){
+        stringstream tmp;
+        tmp<<"*Nset,Nset="<<name<<endl;
+        for(int i:ids){
+            tmp<<i<<" ";
+        }
+        tmp<<endl;
+        return tmp.str();
+    }
+};
+
+class Elset{
+public:
+    string name;
+    vector<int> ids; // elements ids
+public:
+    Elset(string name){
+        this->name = name;
+    }
+
+    string to_write_debug(){
+        stringstream tmp;
+        tmp<<"*Elset,Elset="<<name<<endl;
+        for(int i:ids){
+            tmp<<i<<" ";
+        }
+        tmp<<endl;
+        return tmp.str();
+    }
+};
+
+/**
+ * 总的数据类型类，abaqusdata继承自它
+ */
+class Data{
+public:
+};
+
+class AbaqusData : public Data {
+public:
+    vector<Node *> nodeList;
+    vector<Element *> elementList;
+    vector<Elset *> elsetList;
+    vector<Nset *> nsetList;
+};
 
 #endif //STRUCTURE_H
