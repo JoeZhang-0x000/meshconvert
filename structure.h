@@ -37,6 +37,16 @@ int STARTLINE = 0; // 默认开始读位置
 
 int ENDLINE = INT_MAX; //默认结束读位置
 
+int NSIZE; //总地节点数量
+
+int ELSIZE; // 总地单元数量
+
+int ELSETSIZE; //总地elset数量
+
+int NSETSIZE; // 总地nset数量
+
+int ATT; //用以作为偏移量，计算全局的编号
+
 
 
 
@@ -166,10 +176,9 @@ string Element::to_write_mfem() {
         gem = GEOM[GEOM3D[int(v_node.size())]];
     else
         gem = GEOM[GEOM2D[int(v_node.size())]];
-    // tmp<<int(id)<<" ";
-    tmp << setw(WID) << 1 << " " << setw(WID) << gem << " ";
+    tmp <<" " << 1 << " " << gem << " ";
     for (auto i: v_node) {
-        tmp << setw(WID) << to_string(i) << " ";
+        tmp << " "<< to_string(i-1) << " ";
     }
     tmp << endl;
     string res = tmp.str();
@@ -179,6 +188,7 @@ string Element::to_write_mfem() {
 class Nset{
 public:
     string name;
+    int att; //在每个进程内部的编号,
     vector<int> ids; // nodes ids
 public:
     Nset(string name = "no name"){
@@ -191,6 +201,15 @@ public:
             tmp<<i<<" ";
         }
         tmp<<endl;
+        return tmp.str();
+    }
+    string to_write_mfem(){
+        stringstream  tmp;
+        // 认为boundary是由abaqus Nset构成，其中abaqus一个nset的点连接起来就是边界
+        for(int i=0;i<ids.size()-1;i++){
+            tmp<<ATT<<" "<<"1"<<" "<<ids[i]-1<<" "<<ids[i+1]-1<<endl;
+        }
+//        tmp<<endl;
         return tmp.str();
     }
 };
@@ -213,6 +232,7 @@ public:
         tmp<<endl;
         return tmp.str();
     }
+
 };
 
 /**

@@ -83,34 +83,111 @@ void readMfem(ifstream &fin, vector<Node *> &nodeList, vector<Element *> &elemen
     }
 }
 
-void writeMfem(fstream &fout, vector<Node *> &nodeList, vector<Element *> &elementList, vector<Element *> &boundaryList) {
-    fout << "MFEM mesh v1.x\n";
-    fout << endl;
-    fout << "dimension\n";
-    fout << DIM << "\n";
-    fout << endl;
-    fout << "elements\n";
-    fout << elementList.size() << endl;
-    for (auto i: elementList) {
-        fout << i->to_write_mfem();
+void writeMfemElement(string filename,AbaqusData* abaqusData){
+    auto op = ios::app;
+    ofstream fout(filename,op);
+    vector<Element*> elementList = abaqusData->elementList;
+    if(RANK==0){
+        fout<<"elements\n";
+        fout<<ELSIZE<<endl;
     }
-    fout << endl;
+//    fout<<"#e"<<RANK<<endl;
+    for(auto itr : elementList){
+        fout<<itr->to_write_mfem();
+    }
+    fout.close();
+}
 
-    fout << "boundary\n";
-    DIM = 2;
-    fout << boundaryList.size() << endl;
-    for (auto i: boundaryList) {
-        fout << i->to_write_mfem();
+void writeMfemBoundary(string filename,AbaqusData* abaqusData){
+    auto op = ios::app;
+    ofstream fout(filename,op);
+    vector<Nset*> nsetList = abaqusData->nsetList;
+    if(RANK==0){
+        fout<<"boundary\n";
+        fout<<NSETSIZE<<endl;
     }
-    fout << endl;
+//    fout<<"#b"<<RANK<<endl;
+    for(int i=0;i<nsetList.size();i++){
+        fout<<nsetList[i]->to_write_mfem();
+        ATT ++;
+    }
+    fout.close();
+}
 
-    fout << endl;
-    fout << "vertices\n";
-    fout << nodeList.size() << endl;
-    fout << NDIM << endl;
-    for (auto i: nodeList) {
-        fout << i->to_write_mfem();
+void writeMfemVertices(string filename,AbaqusData* abaqusData){
+    auto op = ios::app;
+    ofstream fout(filename,op);
+    vector<Node *> nodeList = abaqusData->nodeList;
+    if(RANK==0){
+        fout<<"vertices\n";
+        fout<<NSIZE<<endl;
+        fout<<DIM<<endl;
     }
+//    fout<<"#v"<<RANK<<endl;
+    for(auto itr : nodeList){
+        fout<<itr->to_write_mfem();
+    }
+    fout.close();
+}
+void writeMfem(string filename,AbaqusData *abaqusData) {
+    NSIZE = abaqusData->nodeList.size();
+    ELSIZE = abaqusData->elementList.size();
+    for(int i=0;i<abaqusData->nsetList.size();i++){ // 因为所有边界都用线段表示了，所以每个进程存的边界就是线段的数量，线段的数量应等于点集数量-1，
+        NSETSIZE += abaqusData->nsetList[i]->ids.size()-1;
+
+    }
+    int tn,te,tns; // 临时变量，MPI 归约用
+    MPI_Reduce(&NSIZE,&tn,1,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
+    MPI_Reduce(&ELSIZE,&te,1,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
+    MPI_Reduce(&NSETSIZE,&tns,1,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
+    NSIZE = tn;
+    ELSIZE = te;
+    NSETSIZE = tns;
+    if(RANK==0){
+        auto op = ios::trunc;
+        ofstream fout(filename,op);
+        fout << "MFEM mesh v1.0\n";
+        fout << endl;
+        fout<<"#\n"
+              "# MFEM Geometry Types (see mesh/geom.hpp):\n"
+              "#\n"
+              "# POINT       = 0\n"
+              "# SEGMENT     = 1\n"
+              "# TRIANGLE    = 2\n"
+              "# SQUARE      = 3\n"
+              "# TETRAHEDRON = 4\n"
+              "# CUBE        = 5\n"
+              "#"<<endl;
+        fout << "dimension\n";
+        fout << DIM << "\n";
+        fout << endl;
+        fout.close();
+    }
+    int ok;
+    MPI_Status status;
+    int left = MPI_PROC_NULL;
+    int right = MPI_PROC_NULL;
+    if (RANK != 0)
+        left = RANK - 1;
+    if (RANK != SIZE - 1)
+        right = RANK + 1;
+
+    MPI_Recv(&ok, 1, MPI_INT, left, 0, MPI_COMM_WORLD, &status);
+    writeMfemElement(filename,abaqusData);
+    MPI_Send(&ok, 1, MPI_INT, right, 0, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    MPI_Recv(&ATT, 1, MPI_INT, left, 1, MPI_COMM_WORLD, &status); // 这里交换了ATT信息给下一个进程
+    writeMfemBoundary(filename,abaqusData);
+    MPI_Send(&ATT, 1, MPI_INT, right, 1, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    MPI_Recv(&ok, 1, MPI_INT, left, 2, MPI_COMM_WORLD, &status);
+    writeMfemVertices(filename,abaqusData);
+    MPI_Send(&ok, 1, MPI_INT, right, 2, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+
 }
 
 #endif //MFEM_H

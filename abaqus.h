@@ -168,13 +168,13 @@ void readAbaqus(ifstream &fin,AbaqusData *abaqusData,
  * @param nodeList
  * @param elementList
  */
-void writeDebug(fstream &fout, AbaqusData* abaqusData) {
+void writeDebug(string filename, AbaqusData* abaqusData) {
+    auto op = (RANK==0)? ios::trunc | ios::out : ios::app;
+    ofstream fout(filename,op);
     vector<Node *> *nodeList = &abaqusData->nodeList;
     vector<Element *> *elementList = &abaqusData->elementList;
     vector<Elset *> *elsetList = &abaqusData->elsetList;
     vector<Nset *> *nsetList = &abaqusData->nsetList;
-    fout.clear();
-    fout.seekp(0, ios::end);
     string buf;
     fout<<"**rank: "<< RANK<<" start: "<<STARTLINE<<" end: "<<ENDLINE<< endl;
     fout<<"*Node"<<endl;

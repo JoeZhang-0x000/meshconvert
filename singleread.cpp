@@ -46,16 +46,8 @@ int main(int argc, char **argv) {
     }
 
     ifstream fin;
-    fstream fout;
     fin.open(inputFileName);
-    auto op = (RANK == 0) ? ios::out | ios::trunc : ios::out;
-    fout.open(outputFileName, op);
-
-    // structure to store data
     AbaqusData *data;
-//    vector<Node *> nodeList;
-//    vector<Element *> elementList;
-//    vector<Element *> boundaryList;
 
     double start, end; // used to record the time cost
 
@@ -100,12 +92,12 @@ int main(int argc, char **argv) {
             right = RANK + 1;
         MPI_Recv(&ok, 1, MPI_INT, left, 0, MPI_COMM_WORLD, &status);
 
-        writeDebug(fout, data);
+        writeDebug(outputFileName, data);
 
         MPI_Send(&ok, 1, MPI_INT, right, 0, MPI_COMM_WORLD);
 
     } else if (!destType.compare("mfem")) {
-//        writeMfem(fout, nodeList, elementList, boundaryList);
+        writeMfem(outputFileName, data);
     } else {
         cerr << left << setw(20) << "no such destination type " << destType << endl;
     }
@@ -116,7 +108,6 @@ int main(int argc, char **argv) {
     cout << "rank " << RANK << " : " << end - start << "s" << endl;
 
     fin.close();
-    fout.close();
 
     MPI_Finalize();
     ctable("rank:");
